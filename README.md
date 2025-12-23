@@ -16,6 +16,11 @@ Describe the sound you want to extract or remove using natural language. Powered
 - ⚡ **Real-time Progress** - Track separation progress in real-time
 - 🎛️ **Stem Mixer** - Preview and compare original, extracted, and residual audio
 
+## 🗺️ Roadmap
+
+- 🎬 **Video Support** - Upload videos and separate audio sources visually
+- 🖱️ **Visual Prompting** - Click on video to select sound sources (Integration with [SAM 3](https://github.com/facebookresearch/sam2))
+
 ## Architecture
 
 ```
@@ -284,4 +289,5 @@ This project is licensed under the MIT License. SAM-Audio is licensed by Meta un
 ## Credits
 
 - [SAM-Audio](https://github.com/facebookresearch/sam-audio) by Meta AI Research
+- **Core Optimization Logic**: Special thanks to [NilanEkanayake](https://github.com/NilanEkanayake) for providing the initial code modifications in [Issue #24](https://github.com/facebookresearch/sam-audio/issues/24) that made VRAM inference reduction possible.
 - Built with ❤️ using Next.js, FastAPI, and Celery

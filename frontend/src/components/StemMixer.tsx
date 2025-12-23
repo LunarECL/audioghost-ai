@@ -108,6 +108,7 @@ export default function StemMixer({
                     barRadius: 2,
                     height: 48,
                     normalize: true,
+                    // All tracks are seekable - clicking any will sync all others
                     interact: true,
                     hideScrollbar: true,
                 });
@@ -129,11 +130,16 @@ export default function StemMixer({
                 });
 
                 ws.on("finish", () => {
-                    setIsPlaying(false);
-                    setCurrentTime(0);
-                    Object.values(wavesurferRefs.current).forEach(w => {
-                        if (w) w.seekTo(0);
-                    });
+                    // Only trigger finish logic from the "original" track
+                    // to prevent multiple finish events causing desync
+                    if (track.id === "original") {
+                        setIsPlaying(false);
+                        setCurrentTime(0);
+                        // Seek all tracks back to start synchronized
+                        Object.values(wavesurferRefs.current).forEach(w => {
+                            if (w) w.seekTo(0);
+                        });
+                    }
                 });
 
                 // Sync seeking across all tracks - when ANY track is seeked
@@ -176,6 +182,59 @@ export default function StemMixer({
             }, 0);
         };
     }, [taskId]);
+
+    // Continuous sync effect - keep all tracks aligned to original during playback
+    useEffect(() => {
+        let animationFrameId: number;
+        const syncInterval = 100; // Sync every 100ms
+        let lastSync = 0;
+
+        const syncTracks = (timestamp: number) => {
+            if (isPlaying && timestamp - lastSync > syncInterval) {
+                lastSync = timestamp;
+                const originalWs = wavesurferRefs.current["original"];
+                if (originalWs) {
+                    const masterTime = originalWs.getCurrentTime();
+                    const masterDuration = originalWs.getDuration();
+                    const progress = masterTime / masterDuration;
+
+                    // Check if original finished
+                    if (masterTime >= masterDuration - 0.1) {
+                        // Stop all tracks
+                        Object.values(wavesurferRefs.current).forEach(ws => ws?.pause());
+                        Object.values(wavesurferRefs.current).forEach(ws => ws?.seekTo(0));
+                        setIsPlaying(false);
+                        setCurrentTime(0);
+                        return;
+                    }
+
+                    // Sync other tracks to master
+                    Object.entries(wavesurferRefs.current).forEach(([id, ws]) => {
+                        if (ws && id !== "original") {
+                            const trackTime = ws.getCurrentTime();
+                            // Only sync if drift is more than 0.05 seconds
+                            if (Math.abs(trackTime - masterTime) > 0.05) {
+                                ws.seekTo(progress);
+                            }
+                        }
+                    });
+
+                    setCurrentTime(masterTime);
+                }
+            }
+            animationFrameId = requestAnimationFrame(syncTracks);
+        };
+
+        if (isPlaying) {
+            animationFrameId = requestAnimationFrame(syncTracks);
+        }
+
+        return () => {
+            if (animationFrameId) {
+                cancelAnimationFrame(animationFrameId);
+            }
+        };
+    }, [isPlaying]);
 
     // Sync play/pause across all tracks
     const togglePlayAll = useCallback(() => {
